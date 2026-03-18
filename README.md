@@ -1,6 +1,7 @@
 # 五子棋 AI 项目 (WPF + .NET 10)
 
-这是一个基于 WPF 开发的 15x15 五子棋游戏，具备基础的启发式 AI 对手。
+这是一个基于 WPF 开发的 15x15 五子棋游戏，具备基础的启发式 AI 对手。  
+<img width="833" height="688" alt="Image" src="https://github.com/user-attachments/assets/ff20786a-2e32-4a99-b519-a71b52511ae2" />
 
 ## AI 核心算法流程
 
