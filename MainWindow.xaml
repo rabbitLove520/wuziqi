@@ -1,0 +1,94 @@
+<Window x:Class="WuziqiAi.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WuziqiAi"
+        xmlns:vm="clr-namespace:WuziqiAi.ViewModels"
+        xmlns:conv="clr-namespace:WuziqiAi.Converters"
+        mc:Ignorable="d"
+        Title="Wuziqi (Gomoku) AI" Height="700" Width="850" Background="#f0e6d2">
+    <Window.Resources>
+        <conv:StateToColorConverter x:Key="StateToColor"/>
+        <conv:StateToOpacityConverter x:Key="StateToOpacity"/>
+        <conv:LastMoveToVisibilityConverter x:Key="LastMoveToVisibility"/>
+    </Window.Resources>
+    
+    <Window.DataContext>
+        <vm:GomokuViewModel/>
+    </Window.DataContext>
+
+    <Grid Margin="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="600"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- The Game Board -->
+        <Border BorderBrush="#8b4513" BorderThickness="2" Background="#deb887" Padding="0">
+            <ItemsControl ItemsSource="{Binding Cells}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="15" Rows="15"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Command="{Binding DataContext.CellClickCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}"
+                                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"
+                                Padding="0">
+                            <Grid>
+                                <!-- Grid Lines -->
+                                <Rectangle HorizontalAlignment="Stretch" VerticalAlignment="Center" Height="1" Fill="#5d2e0d"/>
+                                <Rectangle HorizontalAlignment="Center" VerticalAlignment="Stretch" Width="1" Fill="#5d2e0d"/>
+                                
+                                <!-- Stone -->
+                                <Ellipse Margin="2" 
+                                         Fill="{Binding State, Converter={StaticResource StateToColor}}"
+                                         Opacity="{Binding State, Converter={StaticResource StateToOpacity}}"
+                                         Width="30" Height="30">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect BlurRadius="5" ShadowDepth="2" Opacity="0.5"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+                                
+                                <!-- Last Move Marker -->
+                                <Ellipse Width="8" Height="8" Fill="Red" 
+                                         Visibility="{Binding IsLastMove, Converter={StaticResource LastMoveToVisibility}}"/>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- Side Panel -->
+        <StackPanel Grid.Column="1" Margin="20,0,0,0">
+            <TextBlock Text="五子棋 AI" FontSize="24" FontWeight="Bold" Margin="0,0,0,10" Foreground="#5d2e0d"/>
+            
+            <Border Background="#fffaf0" CornerRadius="10" Padding="15" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="状态:" FontSize="14" Foreground="#8b4513"/>
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="18" FontWeight="Bold" Foreground="#333"/>
+                </StackPanel>
+            </Border>
+
+            <Button Content="重新开始" Command="{Binding ResetCommand}" Padding="10" 
+                    Background="#8b4513" Foreground="White" BorderThickness="0">
+                <Button.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="5"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+
+            <TextBlock Margin="0,20,0,0" TextWrapping="Wrap" FontSize="12" Foreground="#666">
+                游戏说明：<LineBreak/>
+                1. 黑棋先手。<LineBreak/>
+                2. 任意方向连成五子即获胜。<LineBreak/>
+                3. 你的对手是强化版 AI（白棋）。
+            </TextBlock>
+        </StackPanel>
+    </Grid>
+</Window>
