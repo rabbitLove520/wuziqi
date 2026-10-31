@@ -1,0 +1,57 @@
+name: Release Build
+
+on:
+  # 在 GitHub 上发布（publish）Release 时自动构建并上传 exe
+  release:
+    types: [published]
+  # 也可以在 Actions 页面手动触发，仅构建并上传 artifact，不发 Release
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish
+        run: >
+          dotnet publish WuziqiAi.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+          -o publish
+
+      - name: Rename exe with version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          if (-not $tag) { $tag = "dev" }
+          $safe = $tag -replace '[^\w\.\-]', '_'
+          Rename-Item "publish/WuziqiAi.exe" "WuziqiAi-$safe-win-x64.exe"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WuziqiAi-win-x64
+          path: publish/*.exe
+          if-no-files-found: error
+
+      - name: Upload exe to release
+        if: github.event_name == 'release'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" publish/*.exe --clobber

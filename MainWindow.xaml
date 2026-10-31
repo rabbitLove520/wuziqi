@@ -7,7 +7,8 @@
         xmlns:vm="clr-namespace:WuziqiAi.ViewModels"
         xmlns:conv="clr-namespace:WuziqiAi.Converters"
         mc:Ignorable="d"
-        Title="Wuziqi (Gomoku) AI" Height="700" Width="850" Background="#f0e6d2">
+        Title="Wuziqi (Gomoku) AI" Height="700" Width="900" Background="#f0e6d2"
+        WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <conv:StateToColorConverter x:Key="StateToColor"/>
         <conv:StateToOpacityConverter x:Key="StateToOpacity"/>
@@ -74,7 +75,27 @@
                 </StackPanel>
             </Border>
 
-            <Button Content="重新开始" Command="{Binding ResetCommand}" Padding="10" 
+            <Border Background="#fffaf0" CornerRadius="10" Padding="15" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="难度:" FontSize="14" Foreground="#8b4513" Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Content="简单"
+                                     GroupName="Difficulty"
+                                     IsChecked="{Binding IsEasySelected, Mode=TwoWay}"
+                                     FontSize="14" Foreground="#333" Margin="0,0,20,0"/>
+                        <RadioButton Content="中等"
+                                     GroupName="Difficulty"
+                                     IsChecked="{Binding IsMediumSelected, Mode=TwoWay}"
+                                     FontSize="14" Foreground="#333" Margin="0,0,20,0"/>
+                        <RadioButton Content="困难"
+                                     GroupName="Difficulty"
+                                     IsChecked="{Binding IsHardSelected, Mode=TwoWay}"
+                                     FontSize="14" Foreground="#333"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Button Content="{Binding ActionButtonText}" Command="{Binding ActionCommand}" Padding="10" 
                     Background="#8b4513" Foreground="White" BorderThickness="0">
                 <Button.Resources>
                     <Style TargetType="Border">
@@ -87,7 +108,7 @@
                 游戏说明：<LineBreak/>
                 1. 黑棋先手。<LineBreak/>
                 2. 任意方向连成五子即获胜。<LineBreak/>
-                3. 你的对手是强化版 AI（白棋）。
+                3. 你的对手是白棋 AI，可切换难度。
             </TextBlock>
         </StackPanel>
     </Grid>

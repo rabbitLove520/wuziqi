@@ -20,7 +20,7 @@ public class GomokuViewModel : ViewModelBase
         set => SetProperty(ref _currentTurn, value);
     }
 
-    private string _statusMessage = "黑棋回合";
+    private string _statusMessage = "点击「开始游戏」";
     public string StatusMessage
     {
         get => _statusMessage;
@@ -34,17 +34,85 @@ public class GomokuViewModel : ViewModelBase
         set => SetProperty(ref _isGameOver, value);
     }
 
-    public ICommand CellClickCommand { get; }
-    public ICommand ResetCommand { get; }
+    private bool _isAiThinking;
+    public bool IsAiThinking
+    {
+        get => _isAiThinking;
+        set => SetProperty(ref _isAiThinking, value);
+    }
 
-    private readonly SimpleAI _ai;
+    private Difficulty _selectedDifficulty = Difficulty.Easy;
+    public Difficulty SelectedDifficulty
+    {
+        get => _selectedDifficulty;
+        set
+        {
+            if (SetProperty(ref _selectedDifficulty, value))
+            {
+                OnPropertyChanged(nameof(IsEasySelected));
+                OnPropertyChanged(nameof(IsMediumSelected));
+                OnPropertyChanged(nameof(IsHardSelected));
+            }
+        }
+    }
+
+    public bool IsEasySelected
+    {
+        get => SelectedDifficulty == Difficulty.Easy;
+        set
+        {
+            if (value) SelectedDifficulty = Difficulty.Easy;
+        }
+    }
+
+    public bool IsMediumSelected
+    {
+        get => SelectedDifficulty == Difficulty.Medium;
+        set
+        {
+            if (value) SelectedDifficulty = Difficulty.Medium;
+        }
+    }
+
+    public bool IsHardSelected
+    {
+        get => SelectedDifficulty == Difficulty.Hard;
+        set
+        {
+            if (value) SelectedDifficulty = Difficulty.Hard;
+        }
+    }
+
+    private bool _isGameStarted;
+    public bool IsGameStarted
+    {
+        get => _isGameStarted;
+        private set
+        {
+            if (SetProperty(ref _isGameStarted, value))
+                OnPropertyChanged(nameof(ActionButtonText));
+        }
+    }
+
+    public string ActionButtonText =>
+        !IsGameStarted ? "开始游戏" : IsGameOver ? "再来一局" : "重新开始";
+
+    public ICommand CellClickCommand { get; }
+    public ICommand ActionCommand { get; }
+
+    private readonly SimpleAI _easyAi;
+    private readonly MediumAI _mediumAi;
+    private readonly HardAI _hardAi;
+    private int _gameVersion;
 
     public GomokuViewModel()
     {
-        _ai = new SimpleAI(BoardSize);
+        _easyAi = new SimpleAI(BoardSize);
+        _mediumAi = new MediumAI(BoardSize);
+        _hardAi = new HardAI(BoardSize);
         InitializeBoard();
-        CellClickCommand = new RelayCommand(OnCellClick, _ => !IsGameOver);
-        ResetCommand = new RelayCommand(_ => ResetGame());
+        CellClickCommand = new RelayCommand(OnCellClick, _ => IsGameStarted && !IsGameOver);
+        ActionCommand = new RelayCommand(_ => OnActionButton());
     }
 
     private void InitializeBoard()
@@ -59,23 +127,68 @@ public class GomokuViewModel : ViewModelBase
         }
     }
 
-    private void OnCellClick(object? parameter)
+    private void OnActionButton()
     {
-        if (parameter is not GomokuCell cell || cell.State != CellState.Empty || IsGameOver)
+        IsGameStarted = true;
+        ResetGame();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private async void OnCellClick(object? parameter)
+    {
+        if (parameter is not GomokuCell cell || cell.State != CellState.Empty || !IsGameStarted || IsGameOver || IsAiThinking)
             return;
 
         MakeMove(cell);
 
-        if (!IsGameOver && CurrentTurn == CellState.White)
+        if (IsGameOver || CurrentTurn != CellState.White)
+            return;
+
+        // 困难难度在后台线程搜索，避免卡住 UI
+        IsAiThinking = true;
+        int version = _gameVersion;
+
+        try
         {
-            // AI 思考并落子
-            var aiMove = _ai.GetBestMove(Cells, CellState.White);
+            (int row, int col)? aiMove;
+
+            if (SelectedDifficulty == Difficulty.Hard)
+            {
+                var board = SnapshotBoard();
+                aiMove = await Task.Run(() => _hardAi.GetBestMove(board, CellState.White));
+            }
+            else if (SelectedDifficulty == Difficulty.Medium)
+            {
+                aiMove = _mediumAi.GetBestMove(Cells, CellState.White);
+            }
+            else
+            {
+                aiMove = _easyAi.GetBestMove(Cells, CellState.White);
+            }
+
+            // 思考期间棋盘已被重开，丢弃这次结果
+            if (version != _gameVersion || IsGameOver)
+                return;
+
             if (aiMove != null)
             {
                 var targetCell = Cells[aiMove.Value.row * BoardSize + aiMove.Value.col];
                 MakeMove(targetCell);
             }
         }
+        finally
+        {
+            IsAiThinking = false;
+        }
+    }
+
+    private CellState[] SnapshotBoard()
+    {
+        var board = new CellState[Cells.Count];
+        for (int i = 0; i < board.Length; i++)
+            board[i] = Cells[i].State;
+
+        return board;
     }
 
     private void MakeMove(GomokuCell cell)
@@ -101,6 +214,8 @@ public class GomokuViewModel : ViewModelBase
             CurrentTurn = CurrentTurn == CellState.Black ? CellState.White : CellState.Black;
             StatusMessage = $"{(CurrentTurn == CellState.Black ? "黑棋" : "白棋")} 回合";
         }
+
+        OnPropertyChanged(nameof(ActionButtonText));
     }
 
     private bool CheckWin(int row, int col, CellState state)
@@ -148,8 +263,10 @@ public class GomokuViewModel : ViewModelBase
             cell.IsLastMove = false;
         }
         _lastCell = null;
+        _gameVersion++;
         CurrentTurn = CellState.Black;
         StatusMessage = "黑棋回合";
         IsGameOver = false;
+        OnPropertyChanged(nameof(ActionButtonText));
     }
 }
